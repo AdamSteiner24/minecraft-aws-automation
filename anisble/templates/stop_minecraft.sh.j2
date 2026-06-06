@@ -1,0 +1,9 @@
+#!/bin/bash
+
+PIPE="{{ minecraft_dir }}/minecraft_console"
+
+if [ -p "$PIPE" ]; then
+    echo "stop" > "$PIPE"
+fi
+
+sleep 10

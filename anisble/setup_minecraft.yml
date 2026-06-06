@@ -1,0 +1,114 @@
+---
+- name: Configure Minecraft server
+  hosts: minecraft
+  become: true
+
+  vars:
+    minecraft_user: minecraft
+    minecraft_group: minecraft
+    minecraft_dir: /opt/minecraft
+    minecraft_memory_min: "1G"
+    minecraft_memory_max: "2G"
+
+    minecraft_server_url: "https://piston-data.mojang.com/v1/objects/e6ec2f64e6080b9b5d9b471b291c33cc7f509733/server.jar"
+
+  tasks:
+    - name: Update apt package cache
+      ansible.builtin.apt:
+        update_cache: true
+
+    - name: Install required packages
+      ansible.builtin.apt:
+        name:
+          - openjdk-21-jre-headless
+          - curl
+        state: present
+
+    - name: Create minecraft group
+      ansible.builtin.group:
+        name: "{{ minecraft_group }}"
+        state: present
+
+    - name: Create minecraft user
+      ansible.builtin.user:
+        name: "{{ minecraft_user }}"
+        group: "{{ minecraft_group }}"
+        system: true
+        shell: /usr/sbin/nologin
+        home: "{{ minecraft_dir }}"
+        create_home: false
+
+    - name: Create Minecraft directory
+      ansible.builtin.file:
+        path: "{{ minecraft_dir }}"
+        state: directory
+        owner: "{{ minecraft_user }}"
+        group: "{{ minecraft_group }}"
+        mode: "0755"
+
+    - name: Download Minecraft server jar
+      ansible.builtin.get_url:
+        url: "{{ minecraft_server_url }}"
+        dest: "{{ minecraft_dir }}/server.jar"
+        owner: "{{ minecraft_user }}"
+        group: "{{ minecraft_group }}"
+        mode: "0644"
+
+    - name: Accept Minecraft EULA
+      ansible.builtin.copy:
+        dest: "{{ minecraft_dir }}/eula.txt"
+        content: "eula=true\n"
+        owner: "{{ minecraft_user }}"
+        group: "{{ minecraft_group }}"
+        mode: "0644"
+
+    - name: Create server.properties
+      ansible.builtin.copy:
+        dest: "{{ minecraft_dir }}/server.properties"
+        owner: "{{ minecraft_user }}"
+        group: "{{ minecraft_group }}"
+        mode: "0644"
+        content: |
+          server-port=25565
+          motd=Acme Corp Automated Minecraft Server
+          enable-command-block=false
+          online-mode=true
+          difficulty=easy
+          gamemode=survival
+          max-players=20
+          view-distance=10
+          simulation-distance=10
+
+    - name: Install Minecraft start script
+      ansible.builtin.template:
+        src: templates/start_minecraft.sh.j2
+        dest: /usr/local/bin/start_minecraft.sh
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Install Minecraft stop script
+      ansible.builtin.template:
+        src: templates/stop_minecraft.sh.j2
+        dest: /usr/local/bin/stop_minecraft.sh
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Install systemd service
+      ansible.builtin.template:
+        src: templates/minecraft.service.j2
+        dest: /etc/systemd/system/minecraft.service
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Reload systemd
+      ansible.builtin.systemd_service:
+        daemon_reload: true
+
+    - name: Enable and start Minecraft service
+      ansible.builtin.systemd_service:
+        name: minecraft
+        enabled: true
+        state: restarted

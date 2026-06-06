@@ -1,1 +1,17 @@
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
+terraform.tfvars
 
+# Generated SSH keys
+*.pem
+
+# Ansible
+*.retry
+
+# OS/editor files
+.DS_Store
+.vscode/
+.idea/

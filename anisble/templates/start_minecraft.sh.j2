@@ -1,0 +1,15 @@
+#!/bin/bash
+set -e
+
+cd {{ minecraft_dir }}
+
+PIPE="{{ minecraft_dir }}/minecraft_console"
+
+if [ ! -p "$PIPE" ]; then
+    rm -f "$PIPE"
+    mkfifo "$PIPE"
+fi
+
+while true; do
+    cat "$PIPE"
+done | /usr/bin/java -Xms{{ minecraft_memory_min }} -Xmx{{ minecraft_memory_max }} -jar server.jar nogui
