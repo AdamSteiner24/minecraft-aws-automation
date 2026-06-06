@@ -1,15 +1,11 @@
-data "aws_ami" "ubuntu" {
-  most_recent = true
-  owners      = ["099720109477"] # Canonical Ubuntu
+data "aws_vpc" "default" {
+  default = true
+}
 
+data "aws_subnets" "default" {
   filter {
-    name   = "name"
-    values = ["ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-*"]
-  }
-
-  filter {
-    name   = "virtualization-type"
-    values = ["hvm"]
+    name   = "vpc-id"
+    values = [data.aws_vpc.default.id]
   }
 }
 
@@ -29,56 +25,10 @@ resource "aws_key_pair" "minecraft_key" {
   public_key = tls_private_key.minecraft_key.public_key_openssh
 }
 
-resource "aws_vpc" "minecraft_vpc" {
-  cidr_block           = "10.0.0.0/16"
-  enable_dns_hostnames = true
-  enable_dns_support   = true
-
-  tags = {
-    Name = "${var.project_name}-vpc"
-  }
-}
-
-resource "aws_subnet" "minecraft_subnet" {
-  vpc_id                  = aws_vpc.minecraft_vpc.id
-  cidr_block              = "10.0.1.0/24"
-  map_public_ip_on_launch = true
-
-  tags = {
-    Name = "${var.project_name}-public-subnet"
-  }
-}
-
-resource "aws_internet_gateway" "minecraft_igw" {
-  vpc_id = aws_vpc.minecraft_vpc.id
-
-  tags = {
-    Name = "${var.project_name}-igw"
-  }
-}
-
-resource "aws_route_table" "minecraft_route_table" {
-  vpc_id = aws_vpc.minecraft_vpc.id
-
-  route {
-    cidr_block = "0.0.0.0/0"
-    gateway_id = aws_internet_gateway.minecraft_igw.id
-  }
-
-  tags = {
-    Name = "${var.project_name}-route-table"
-  }
-}
-
-resource "aws_route_table_association" "minecraft_route_table_association" {
-  subnet_id      = aws_subnet.minecraft_subnet.id
-  route_table_id = aws_route_table.minecraft_route_table.id
-}
-
 resource "aws_security_group" "minecraft_sg" {
   name        = "${var.project_name}-sg"
   description = "Allow SSH and Minecraft traffic"
-  vpc_id      = aws_vpc.minecraft_vpc.id
+  vpc_id      = data.aws_vpc.default.id
 
   ingress {
     description = "SSH for Ansible"
@@ -110,12 +60,16 @@ resource "aws_security_group" "minecraft_sg" {
 }
 
 resource "aws_instance" "minecraft_server" {
-  ami                         = data.aws_ami.ubuntu.id
+  ami                         = "ami-05cf1e9f73fbad2e2"
   instance_type               = var.instance_type
-  subnet_id                   = aws_subnet.minecraft_subnet.id
+  subnet_id                   = data.aws_subnets.default.ids[0]
   vpc_security_group_ids      = [aws_security_group.minecraft_sg.id]
   key_name                    = aws_key_pair.minecraft_key.key_name
   associate_public_ip_address = true
+
+  metadata_options {
+    http_tokens = "required"
+  }
 
   root_block_device {
     volume_size = 16
