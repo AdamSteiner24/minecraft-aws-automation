@@ -13,16 +13,47 @@
     minecraft_server_url: "https://piston-data.mojang.com/v1/objects/97ccd4c0ed3f81bbb7bfacddd1090b0c56f9bc51/server.jar"
 
   tasks:
-    - name: Update apt package cache
-      ansible.builtin.apt:
-        update_cache: true
-
-    - name: Install required packages
+    - name: Install packages needed for Adoptium repository
       ansible.builtin.apt:
         name:
-          - openjdk-21-jre-headless
+          - wget
+          - apt-transport-https
+          - gpg
           - curl
         state: present
+        update_cache: true
+
+    - name: Add Adoptium GPG key
+      ansible.builtin.shell: |
+        wget -qO - https://packages.adoptium.net/artifactory/api/gpg/key/public | gpg --dearmor -o /usr/share/keyrings/adoptium.gpg
+      args:
+        creates: /usr/share/keyrings/adoptium.gpg
+
+    - name: Add Adoptium apt repository
+      ansible.builtin.copy:
+        dest: /etc/apt/sources.list.d/adoptium.list
+        content: "deb [signed-by=/usr/share/keyrings/adoptium.gpg] https://packages.adoptium.net/artifactory/deb noble main\n"
+        mode: "0644"
+
+    - name: Install Java 25
+      ansible.builtin.apt:
+        name: temurin-25-jdk
+        state: present
+        update_cache: true
+
+    - name: Set Java 25 as default Java
+      ansible.builtin.shell: |
+        update-alternatives --set java /usr/lib/jvm/temurin-25-jdk-amd64/bin/java
+      changed_when: false
+
+    - name: Verify Java version
+      ansible.builtin.command: java -version
+      register: java_version_output
+      changed_when: false
+
+    - name: Show Java version
+      ansible.builtin.debug:
+        var: java_version_output.stderr_lines
 
     - name: Create minecraft group
       ansible.builtin.group:
