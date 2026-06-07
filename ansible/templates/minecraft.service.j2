@@ -1,0 +1,20 @@
+[Unit]
+Description=Minecraft Java Server
+After=network.target
+
+[Service]
+Type=simple
+User={{ minecraft_user }}
+Group={{ minecraft_group }}
+WorkingDirectory={{ minecraft_dir }}
+
+ExecStart=/usr/local/bin/start_minecraft.sh
+ExecStop=/usr/local/bin/stop_minecraft.sh
+
+Restart=on-failure
+RestartSec=10
+
+TimeoutStopSec=90
+
+[Install]
+WantedBy=multi-user.target
