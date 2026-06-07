@@ -10,7 +10,7 @@
     minecraft_memory_min: "1G"
     minecraft_memory_max: "2G"
 
-    minecraft_server_url: "https://piston-data.mojang.com/v1/objects/e6ec2f64e6080b9b5d9b471b291c33cc7f509733/server.jar"
+    minecraft_server_url: "https://piston-data.mojang.com/v1/objects/97ccd4c0ed3f81bbb7bfacddd1090b0c56f9bc51/server.jar"
 
   tasks:
     - name: Update apt package cache
